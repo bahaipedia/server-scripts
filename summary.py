@@ -49,8 +49,10 @@ def has_file_been_processed(cursor, filename, server_id, last_modified):
         WHERE filename = %s AND server_id = %s
     """, (filename, server_id))
     result = cursor.fetchone()
-    if result and result[0] == last_modified:
-        return True
+    if result:
+        db_last_modified = result[0]
+        if last_modified == db_last_modified:
+            return True
     return False
 
 def update_file_tracking(cursor, filename, server_id, last_modified):
@@ -59,7 +61,7 @@ def update_file_tracking(cursor, filename, server_id, last_modified):
         INSERT INTO file_tracking (filename, server_id, last_modified, processed_date)
         VALUES (%s, %s, %s, %s)
         ON DUPLICATE KEY UPDATE last_modified = VALUES(last_modified), processed_date = VALUES(processed_date)
-    """, (filename, server_id, last_modified, datetime.now()))
+    """, (filename, server_id, last_modified, datetime.now().replace(microsecond=0)))
 
 def parse_begin_map(file):
     # Parse the BEGIN_MAP section to get positions
@@ -116,7 +118,7 @@ def parse_pos_day(file, pos_day_offset):
 
 def process_file(cursor, file_path, server_id):
     filename = os.path.basename(file_path)
-    last_modified = datetime.fromtimestamp(os.path.getmtime(file_path)).strftime('%Y-%m-%d %H:%M:%S')
+    last_modified = datetime.fromtimestamp(os.path.getmtime(file_path)).replace(microsecond=0)
     
     if has_file_been_processed(cursor, filename, server_id, last_modified):
         print(f"File {filename} has already been processed.")
