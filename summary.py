@@ -138,7 +138,7 @@ def process_file(cursor, file_path, server_id):
         daily_data = parse_pos_day(file, positions['POS_DAY'])
 
     # Extract website name from filename
-    website_name = filename.split('.')[1]
+    website_name = '.'.join(filename.split('.')[1:-1])
     website_id = get_website_id(cursor, website_name)
 
     # Insert monthly TotalUnique into summary table
