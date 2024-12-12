@@ -150,7 +150,7 @@ def process_file(cursor, file_path, server_id):
             INSERT INTO summary (website_id, server_id, year, month, day, unique_visitors)
             VALUES (%s, %s, %s, %s, %s, %s)
             ON DUPLICATE KEY UPDATE unique_visitors = VALUES(unique_visitors)
-        """, (website_id, server_id, year, month, total_unique))
+        """, (website_id, server_id, year, month, day, total_unique))
 
     # Insert daily data into summary table
     for data in daily_data:
