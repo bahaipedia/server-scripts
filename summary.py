@@ -49,10 +49,10 @@ def has_file_been_processed(cursor, filename, server_id, last_modified):
         WHERE filename = %s AND server_id = %s
     """, (filename, server_id))
     result = cursor.fetchone()
-    if result:
-        db_last_modified = result[0]
-        if last_modified == db_last_modified:
-            return True
+    print(f"Database result: {result}")
+    print(f"Provided last_modified: {last_modified}")
+    if result and result[0] == last_modified:
+        return True
     return False
 
 def update_file_tracking(cursor, filename, server_id, last_modified):
