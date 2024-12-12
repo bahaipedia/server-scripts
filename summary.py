@@ -116,7 +116,7 @@ def parse_pos_day(file, pos_day_offset):
 
 def process_file(cursor, file_path, server_id):
     filename = os.path.basename(file_path)
-    last_modified = datetime.fromtimestamp(os.path.getmtime(file_path))
+    last_modified = datetime.fromtimestamp(os.path.getmtime(file_path)).strftime('%Y-%m-%d %H:%M:%S')
     
     if has_file_been_processed(cursor, filename, server_id, last_modified):
         print(f"File {filename} has already been processed.")
