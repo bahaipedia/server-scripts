@@ -145,9 +145,10 @@ def process_file(cursor, file_path, server_id):
     if total_unique is not None and daily_data:
         year = daily_data[0]['year']
         month = daily_data[0]['month']
+        day = 0
         cursor.execute("""
-            INSERT INTO summary (website_id, server_id, year, month, unique_visitors)
-            VALUES (%s, %s, %s, %s, %s)
+            INSERT INTO summary (website_id, server_id, year, month, day, unique_visitors)
+            VALUES (%s, %s, %s, %s, %s, %s)
             ON DUPLICATE KEY UPDATE unique_visitors = VALUES(unique_visitors)
         """, (website_id, server_id, year, month, total_unique))
 
