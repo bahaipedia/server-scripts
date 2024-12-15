@@ -7,19 +7,19 @@ from dotenv import load_dotenv
 # Load environment variables from .env file
 load_dotenv()
 
-# Fetch database credentials from environment variables
+# Database credentials from .env
 db_host = os.getenv('DB_HOST')
 db_user = os.getenv('DB_USER')
 db_password = os.getenv('DB_PASSWORD')
 db_name = os.getenv('DB_NAME')
 
-# Connect to the database
+# Database connection
 def get_database_connection():
     return mysql.connector.connect(
-        host=os.getenv('DB_HOST'),
-        user=os.getenv('DB_USER'),
-        password=os.getenv('DB_PASSWORD'),
-        database=os.getenv('DB_NAME')
+        host=db_host,
+        user=db_user,
+        password=db_password,
+        database=db_name
     )
 
 def get_server_id(directory):
