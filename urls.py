@@ -249,7 +249,7 @@ def main():
                 WHERE ws.website_url_id IS NULL
             """)
         if not website_id and not args.server:
-            # Delete stats for the specified server
+            # Delete all stats and URLs
             cursor.execute("DELETE FROM website_url_stats")
             cursor.execute("DELETE FROM website_url")            
 
