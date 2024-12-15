@@ -210,6 +210,49 @@ def main():
             print(f"No directory found for server '{args.server}'.")
             return
 
+    # Determine website_id if --website is specified
+    website_id = None
+    if args.website:
+        cursor.execute("SELECT id FROM websites WHERE name = %s", (args.website,))
+        result = cursor.fetchone()
+        if result:
+            website_id = result[0]
+        else:
+            print(f"Website '{args.website}' not found in the database.")
+            return
+
+    # If force is True, delete existing data related to the website/server
+    if args.force:
+        if website_id:
+            # Delete stats for the specified website
+            cursor.execute("""
+                DELETE ws FROM website_url_stats ws
+                INNER JOIN website_url wu ON ws.website_url_id = wu.id
+                WHERE wu.website_id = %s
+            """, (website_id,))
+            # Delete unused URLs
+            cursor.execute("""
+                DELETE wu FROM website_url wu
+                LEFT JOIN website_url_stats ws ON wu.id = ws.website_url_id
+                WHERE wu.website_id = %s AND ws.website_url_id IS NULL
+            """, (website_id,))
+        if args.server:
+            # Delete stats for the specified server
+            cursor.execute("""
+                DELETE FROM website_url_stats
+                WHERE server_id = %s
+            """, (server_id,))
+            # Delete unused website_url entries
+            cursor.execute("""
+                DELETE wu FROM website_url wu
+                LEFT JOIN website_url_stats ws ON wu.id = ws.website_url_id
+                WHERE ws.website_url_id IS NULL
+            """)
+        if not website_id and not args.server:
+            # Delete stats for the specified server
+            cursor.execute("DELETE FROM website_url_stats")
+            cursor.execute("DELETE FROM website_url")            
+
     for directory in directories:
         server_id = get_server_id(directory)
         if server_id is None:
