@@ -6,6 +6,7 @@ def parse_arguments():
     parser.add_argument('--server', type=str, help='Specify the server location')
     parser.add_argument('--file', type=str, help='Specify the file to process')
     parser.add_argument('--force', action='store_true', help='Force processing of the specified file')
+    parser.add_argument('--website', type=str, help='Specify the website name')
     parser.add_argument('--script', nargs='+', help='Specify script(s) to run (e.g., summary)')
     return parser.parse_args()
 
@@ -17,13 +18,15 @@ def run_script(script_name, args):
         command.extend(['--file', args.file])
     if args.force:
         command.append('--force')
+    if args.website:
+        command.extend(['--website', args.website])
     subprocess.run(command)
 
 def main():
     args = parse_arguments()
-    
+
     # List of available scripts
-    available_scripts = ['summary', 'pages', 'browsers']  # Add other scripts as needed
+    available_scripts = ['summary', 'urls'] # Add others as necessary
 
     if args.script:
         # Run only the specified scripts
