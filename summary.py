@@ -41,8 +41,10 @@ def get_website_id(cursor, website_name):
     else:
         cursor.execute("INSERT INTO websites (name) VALUES (%s)", (website_name,))
         return cursor.lastrowid
-
-def has_file_been_processed(cursor, filename, server_id, last_modified):
+		
+def has_file_been_processed(cursor, filename, server_id, last_modified, force):
+    if force:
+        return False  # Bypass the processing check if force is True
     # Check if file has been processed
     cursor.execute("""
         SELECT last_modified FROM file_tracking
@@ -114,11 +116,11 @@ def parse_pos_day(file, pos_day_offset):
                 })
     return daily_data
 
-def process_file(cursor, file_path, server_id):
+def process_file(cursor, file_path, server_id, force):
     filename = os.path.basename(file_path)
     last_modified = datetime.fromtimestamp(os.path.getmtime(file_path)).replace(microsecond=0)
-    
-    if has_file_been_processed(cursor, filename, server_id, last_modified):
+
+    if has_file_been_processed(cursor, filename, server_id, last_modified, force):
         print(f"File {filename} has already been processed.")
         return
 
@@ -170,7 +172,7 @@ def main():
     parser = argparse.ArgumentParser(description='Process AWStats summary data.')
     parser.add_argument('--server', type=str, help='Specify the server location')
     parser.add_argument('--file', type=str, help='Specify the file to process')
-    parser.add_argument('--force', action='store_true', help='Force processing of the specified file')
+    parser.add_argument('--force', action='store_true', help='Force processing of the file(s)')
     args = parser.parse_args()
 
     connection = get_database_connection()
@@ -199,10 +201,7 @@ def main():
             # Process only the specified file
             file_path = os.path.join(directory, args.file)
             if os.path.exists(file_path):
-                if args.force:
-                    # Force processing by deleting tracking entry
-                    cursor.execute("DELETE FROM file_tracking WHERE filename = %s AND server_id = %s", (args.file, server_id))
-                process_file(cursor, file_path, server_id)
+                process_file(cursor, file_path, server_id, args.force)
             else:
                 print(f"File '{args.file}' not found in directory '{directory}'.")
         else:
@@ -210,7 +209,7 @@ def main():
             for filename in os.listdir(directory):
                 if filename.endswith('.txt') and 'awstats' in filename:
                     file_path = os.path.join(directory, filename)
-                    process_file(cursor, file_path, server_id)
+                    process_file(cursor, file_path, server_id, args.force)
 
     connection.commit()
     cursor.close()
