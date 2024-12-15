@@ -104,12 +104,21 @@ def parse_pos_sider(file, pos_sider_offset):
         elif not line.startswith('#') and not line.startswith('BEGIN_SIDER'):
             parts = line.split()
             if len(parts) == 5:  # URL, Pages, Bandwidth, Entry, Exit
-                url = parts[0][1:] if parts[0].startswith('/') else parts[0]
+                url = parts[0]
+                # Remove leading slash if present
+                if url.startswith('/'):
+                    url = url[1:]
+                # Remove 'wiki/' prefix if present
+                if url.startswith('wiki/'):
+                    url = url[len('wiki/'):]
+                # Decode URL
+                url = unquote(url)
+                # Now, check if the URL should be ignored
                 if should_ignore_url(url):
                     continue
                 pages, bandwidth, entry, exit_ = map(int, parts[1:])
                 url_data.append({
-                    'url': unquote(url),
+                    'url': url,
                     'pages': pages,
                     'bandwidth': bandwidth,
                     'entry': entry,
