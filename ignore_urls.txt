@@ -18,9 +18,7 @@ load.php
 /load.php
 api.php
 skins/
-https://zh.bahaipedia.org
 opensearch desc.php
-cgi-bin/awstats.pl
 Bahaidata:Main_Page
 COPYING
 Testpage
@@ -54,6 +52,8 @@ Trang_chủ
 特殊:
 讨论:
 主页
+https://zh.bahaipedia.org
+cgi-bin/awstats.pl
 کاربر:
 بحث_کاربر:
 ویژه:
