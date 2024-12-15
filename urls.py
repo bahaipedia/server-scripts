@@ -221,22 +221,35 @@ def main():
             print(f"Website '{args.website}' not found in the database.")
             return
 
-    # If force is True, delete existing data related to the website/server
+    # If force is True, delete existing data related to the website/server/file
     if args.force:
-        if website_id:
+        if args.website:
+            # Get the website_id if not already obtained
+            cursor.execute("SELECT id FROM websites WHERE name = %s", (args.website,))
+            result = cursor.fetchone()
+            if result:
+                website_id = result[0]
+            else:
+                print(f"Website '{args.website}' not found in the database.")
+                return
             # Delete stats for the specified website
             cursor.execute("""
                 DELETE ws FROM website_url_stats ws
                 INNER JOIN website_url wu ON ws.website_url_id = wu.id
                 WHERE wu.website_id = %s
             """, (website_id,))
-            # Delete unused URLs
+            # Delete unused URLs for the website
             cursor.execute("""
                 DELETE wu FROM website_url wu
                 LEFT JOIN website_url_stats ws ON wu.id = ws.website_url_id
                 WHERE wu.website_id = %s AND ws.website_url_id IS NULL
             """, (website_id,))
         if args.server:
+            # Retrieve 'server_id' based on 'args.server'
+            server_id = get_server_id_from_name(args.server)
+            if server_id is None:
+                print(f"Invalid server name '{args.server}'")
+                return
             # Delete stats for the specified server
             cursor.execute("""
                 DELETE FROM website_url_stats
@@ -248,10 +261,50 @@ def main():
                 LEFT JOIN website_url_stats ws ON wu.id = ws.website_url_id
                 WHERE ws.website_url_id IS NULL
             """)
-        if not website_id and not args.server:
+        if args.file:
+            # Extract website_name, year, and month from args.file
+            filename = args.file
+            filename_without_extension = filename[:-4]  # Remove '.txt'
+            parts = filename_without_extension.split('.')
+            if len(parts) < 2:
+                print(f"Invalid file name format '{args.file}'. Cannot extract website name.")
+                return
+            # Extract website name
+            website_name = '.'.join(parts[1:])
+            # Extract year and month from file name (assuming format 'awstatsMMYYYY')
+            import re
+            match = re.match(r'awstats(\d{2})(\d{4})', filename_without_extension)
+            if match:
+                month_str, year_str = match.groups()
+                month = int(month_str)
+                year = int(year_str)
+            else:
+                print(f"Invalid file name format '{args.file}'. Cannot extract year and month.")
+                return
+            # Get website_id
+            cursor.execute("SELECT id FROM websites WHERE name = %s", (website_name,))
+            result = cursor.fetchone()
+            if result:
+                website_id = result[0]
+            else:
+                print(f"Website '{website_name}' not found in the database.")
+                return
+            # Delete stats for the specified website, year, and month
+            cursor.execute("""
+                DELETE ws FROM website_url_stats ws
+                INNER JOIN website_url wu ON ws.website_url_id = wu.id
+                WHERE wu.website_id = %s AND ws.year = %s AND ws.month = %s
+            """, (website_id, year, month))
+            # Delete unused URLs for the website if they have no stats
+            cursor.execute("""
+                DELETE wu FROM website_url wu
+                LEFT JOIN website_url_stats ws ON wu.id = ws.website_url_id
+                WHERE wu.website_id = %s AND ws.website_url_id IS NULL
+            """, (website_id,))
+        if not args.website and not args.server and not args.file:
             # Delete all stats and URLs
             cursor.execute("DELETE FROM website_url_stats")
-            cursor.execute("DELETE FROM website_url")            
+            cursor.execute("DELETE FROM website_url")       
 
     for directory in directories:
         server_id = get_server_id(directory)
