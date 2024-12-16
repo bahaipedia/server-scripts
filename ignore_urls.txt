@@ -18,7 +18,7 @@ load.php
 /load.php
 api.php
 skins/
-opensearch desc.php
+opensearch_desc.php
 Bahaidata:Main_Page
 COPYING
 Testpage
