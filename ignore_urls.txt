@@ -15,6 +15,7 @@ Especial:
 Discusión:
 Portada
 load.php
+rest.php
 /load.php
 api.php
 skins/
