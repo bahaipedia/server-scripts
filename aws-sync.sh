@@ -6,8 +6,8 @@
 PATH=/usr/bin:/usr/local/bin
 
 # Set the source and destination buckets
-SOURCE_BUCKET="s3://bahaimedia"
-DEST_BUCKETS=("s3://bahaimedia-eu" "s3://bahaimedia-sg" "s3://bahaimedia-sp")
+SOURCE_BUCKET="s3://bahaimedia-sp"
+DEST_BUCKETS=("s3://bahaimedia-eu" "s3://bahaimedia-sg" "s3://bahaimedia")
 
 # Path to the needsync.txt file
 NEEDSYNC_FILE="/var/log/mediawiki/needsync.txt"
