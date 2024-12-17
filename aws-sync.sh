@@ -1,5 +1,5 @@
 #!/bin/bash
-export HOME="/home/ubuntu"
+PATH=/usr/bin:/usr/local/bin
 
 # Set the source and destination buckets
 SOURCE_BUCKET="s3://bahaimedia"
