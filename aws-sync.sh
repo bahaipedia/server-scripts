@@ -24,3 +24,6 @@ while IFS= read -r FILE_PATH || [[ -n "$FILE_PATH" ]]; do
         aws s3 cp "$SOURCE_BUCKET/$FILE_PATH" "$DEST_BUCKET/${FILE_PATH%/*}/"
     done
 done < "$NEEDSYNC_FILE"
+
+# Delete the needsync.txt file after the process
+rm -f "$NEEDSYNC_FILE"
