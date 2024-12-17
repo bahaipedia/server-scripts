@@ -3,7 +3,6 @@ User_talk:
 Special:
 Talk:
 MediaWiki:
-Main_Page
 Benutzer:
 Benutzer_Diskussion:
 Spezial:
