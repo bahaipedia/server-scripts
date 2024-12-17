@@ -30,13 +30,10 @@ Discussion:
 Page_d'accueil
 Usuário:
 Usuário_discussão:
-Especial:
 Discussão:
 Página_principal
 Utilizador:
 Utilizador_Discussão:
-Especial:
-Discussão:
 Página_principal
 Участник:
 Обсуждение_участника:
