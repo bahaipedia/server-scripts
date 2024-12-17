@@ -52,6 +52,7 @@ Trang_chủ
 讨论:
 主页
 https://zh.bahaipedia.org
+.git
 cgi-bin/awstats.pl
 ویژه:سیاهه‌ها
 کاربر
