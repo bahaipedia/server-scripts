@@ -76,7 +76,18 @@ def update_file_tracking(cursor, filename, server_id, last_modified):
 
 # Check if a URL should be ignored
 def should_ignore_url(url):
-    return url in ["", "/"] or any(url.startswith(pattern) for pattern in ignore_patterns)
+    if url in ["", "/"]:
+        return True
+    if url.startswith('//'):
+        return True  # Exclude URLs starting with double slashes
+    if url.startswith('.'):
+        return True  # Exclude URLs starting with a dot
+    if '://' in url:
+        return True  # Exclude full URLs containing '://'
+    # Add any additional patterns you want to ignore
+    if any(url.startswith(pattern) for pattern in ignore_patterns):
+        return True
+    return False
 
 # Parse the BEGIN_MAP section to get positions
 def parse_begin_map(file):
@@ -104,18 +115,29 @@ def parse_pos_sider(file, pos_sider_offset):
         elif not line.startswith('#') and not line.startswith('BEGIN_SIDER'):
             parts = line.split()
             if len(parts) == 5:  # URL, Pages, Bandwidth, Entry, Exit
-                url = parts[0]
-                # Remove leading slash if present
-                if url.startswith('/'):
-                    url = url[1:]
+                raw_url = parts[0]
+
+                # Check if the raw URL should be ignored
+                if should_ignore_url(raw_url):
+                    continue
+
+                # Remove the leading slash (which is always present in your valid data)
+                url = raw_url[1:]
+
                 # Remove 'wiki/' prefix if present
                 if url.startswith('wiki/'):
                     url = url[len('wiki/'):]
-                # Decode URL
+
+                # Decode URL-encoded characters
                 url = unquote(url)
-                # Now, check if the URL should be ignored
-                if should_ignore_url(url):
+
+                # Replace underscores with spaces
+                url = url.replace('_', ' ')
+
+                # Exclude URLs that are empty after processing
+                if not url:
                     continue
+
                 pages, bandwidth, entry, exit_ = map(int, parts[1:])
                 url_data.append({
                     'url': url,
