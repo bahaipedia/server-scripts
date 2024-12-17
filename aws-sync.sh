@@ -1,4 +1,8 @@
 #!/bin/bash
+
+# This script is run via cron (crontab -e) every minute. It looks for needsync.txt which is generated Mediawiki when a file is moved or re-uploaded.
+# This script is necessary to account for a limitation in our automatic file distrubtion between different regions. See known limitations in the documentation
+
 PATH=/usr/bin:/usr/local/bin
 
 # Set the source and destination buckets
