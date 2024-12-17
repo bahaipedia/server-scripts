@@ -30,11 +30,8 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 IGNORE_URLS_FILE = os.path.join(SCRIPT_DIR, 'ignore_urls.txt')
 
 # Load ignore patterns from the file
-if os.path.exists(IGNORE_URLS_FILE):
-    with open(IGNORE_URLS_FILE, 'r') as f:
-        ignore_patterns = [line.strip() for line in f if line.strip()]
-else:
-    ignore_patterns = []
+with open('ignore_urls.txt', 'r') as f:
+    ignore_patterns = [line.strip() for line in f if line.strip()]
 
 # Map directories to server IDs
 def get_server_id(directory):
@@ -79,14 +76,15 @@ def should_ignore_url(url):
     if url in ["", "/"]:
         return True
     if url.startswith('//'):
-        return True  # Exclude URLs starting with double slashes
-    if url.startswith('.'):
-        return True  # Exclude URLs starting with a dot
-    if '://' in url:
-        return True  # Exclude full URLs containing '://'
-    # Add any additional patterns you want to ignore
-    if any(url.startswith(pattern) for pattern in ignore_patterns):
         return True
+    if url.startswith('.'):
+        return True
+    if '://' in url:
+        return True
+    # Check against ignore patterns
+    for pattern in ignore_patterns:
+        if url.startswith(pattern):
+            return True
     return False
 
 # Parse the BEGIN_MAP section to get positions
@@ -117,12 +115,16 @@ def parse_pos_sider(file, pos_sider_offset):
             if len(parts) == 5:  # URL, Pages, Bandwidth, Entry, Exit
                 raw_url = parts[0]
 
-                # Check if the raw URL should be ignored
+                # Apply the ignore patterns to the raw URL
                 if should_ignore_url(raw_url):
                     continue
 
-                # Remove the leading slash (which is always present in your valid data)
-                url = raw_url[1:]
+                # Now proceed with URL processing
+                url = raw_url
+
+                # Remove leading slash if present
+                if url.startswith('/'):
+                    url = url[1:]
 
                 # Remove 'wiki/' prefix if present
                 if url.startswith('wiki/'):
@@ -133,10 +135,6 @@ def parse_pos_sider(file, pos_sider_offset):
 
                 # Replace underscores with spaces
                 url = url.replace('_', ' ')
-
-                # Exclude URLs that are empty after processing
-                if not url:
-                    continue
 
                 pages, bandwidth, entry, exit_ = map(int, parts[1:])
                 url_data.append({
