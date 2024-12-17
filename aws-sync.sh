@@ -1,4 +1,6 @@
 #!/bin/bash
+export HOME="/home/ubuntu"
+
 # Set the source and destination buckets
 SOURCE_BUCKET="s3://bahaimedia"
 DEST_BUCKETS=("s3://bahaimedia-eu" "s3://bahaimedia-sg" "s3://bahaimedia-sp")
