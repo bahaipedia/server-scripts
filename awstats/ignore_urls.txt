@@ -3,6 +3,11 @@
 /Special:
 /Talk:
 /MediaWiki:
+/wiki/User:
+/wiki/User_talk:
+/wiki/Special:
+/wiki/Talk:
+/wiki/MediaWiki:
 /Access:
 /Benutzer:
 /Benutzer_Diskussion:
@@ -16,6 +21,7 @@
 /rest.php
 /api.php
 /skins/
+/.git
 /opensearch_desc.php
 /Bahaidata:Main_Page
 /COPYING
