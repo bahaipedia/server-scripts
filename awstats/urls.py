@@ -1,6 +1,7 @@
 import os
 import argparse
 import mysql.connector
+import requests
 from datetime import datetime
 from urllib.parse import unquote
 from dotenv import load_dotenv
@@ -25,13 +26,6 @@ def get_database_connection():
 
 # Determine the path to the script directory
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-
-# Path to the ignore_urls.txt file
-IGNORE_URLS_FILE = os.path.join(SCRIPT_DIR, 'ignore_urls.txt')
-
-# Load ignore patterns from the file
-with open('ignore_urls.txt', 'r') as f:
-    ignore_patterns = [line.strip() for line in f if line.strip()]
 
 # Map directories to server IDs
 def get_server_id(directory):
@@ -71,23 +65,34 @@ def update_file_tracking(cursor, filename, server_id, last_modified):
         ON DUPLICATE KEY UPDATE last_modified = VALUES(last_modified), processed_date = VALUES(processed_date)
     """, (filename, server_id, last_modified, datetime.now().replace(microsecond=0)))
 
-# Check if a URL should be ignored
-def should_ignore_url(url):
-    if url in ["", "/"]:
-        return True
-    if url.startswith('//'):
-        return True
-    if url.startswith('.'):
-        return True
-    if '://' in url:
-        return True
-    if '&' in url:
-        return True
-    # Check against ignore patterns
-    for pattern in ignore_patterns:
-        if url.startswith(pattern):
-            return True
-    return False
+# Fetch valid content pages from MediaWiki API
+def get_valid_content_pages(api_url):
+    valid_pages = set()
+    params = {
+        'action': 'query',
+        'list': 'allpages',
+        'aplimit': 'max',
+        'format': 'json',
+        'redirects': '1',
+        'apfilterredir': 'nonredirects',
+    }
+    while True:
+        response = requests.get(api_url, params=params)
+        data = response.json()
+
+        # Handle potential API errors
+        if 'error' in data:
+            raise Exception(f"MediaWiki API error: {data['error']['info']}")
+
+        for page in data['query']['allpages']:
+            title = page['title']
+            valid_pages.add(title)
+
+        if 'continue' in data:
+            params.update(data['continue'])
+        else:
+            break
+    return valid_pages
 
 # Parse the BEGIN_MAP section to get positions
 def parse_begin_map(file):
@@ -116,10 +121,6 @@ def parse_pos_sider(file, pos_sider_offset):
             parts = line.split()
             if len(parts) == 5:  # URL, Pages, Bandwidth, Entry, Exit
                 raw_url = parts[0]
-
-                # Apply the ignore patterns to the raw URL
-                if should_ignore_url(raw_url):
-                    continue
 
                 # Now proceed with URL processing
                 url = raw_url
@@ -194,13 +195,57 @@ def process_file(cursor, file_path, server_id, force):
     website_name = '.'.join(filename.split('.')[1:-1])
     website_id = get_website_id(cursor, website_name)
 
+    # Construct the API URL
+    api_url = f'https://{website_name}/api.php'
+
+    # Fetch valid content pages from MediaWiki API
+    print(f"Fetching valid content pages from MediaWiki API at {api_url}...")
+    try:
+        valid_pages = get_valid_content_pages(api_url)
+    except Exception as e:
+        print(f"Error fetching valid pages for {website_name}: {e}")
+        return
+    print(f"Retrieved {len(valid_pages)} valid pages for {website_name}.")
+
+    # Insert valid URLs into website_url table
+    print(f"Inserting valid URLs into database for {website_name}...")
+    for url in valid_pages:
+        # Check if the URL already exists
+        cursor.execute("SELECT id FROM website_url WHERE website_id = %s AND url = %s", (website_id, url))
+        result = cursor.fetchone()
+        if not result:
+            cursor.execute("INSERT INTO website_url (website_id, url) VALUES (%s, %s)", (website_id, url))
+
+    # Commit the insertion of valid URLs
+    connection.commit()
+
     # Determine year and month from filename
     year = int(filename[9:13])
     month = int(filename[7:9])
 
+    # If force is True, delete existing data related to the website, server, year, and month
+    if force:
+        print(f"Force option detected. Deleting existing stats for {website_name} for {year}-{month:02d}...")
+        # Delete stats for the specified website, server, year, and month
+        cursor.execute("""
+            DELETE ws FROM website_url_stats ws
+            INNER JOIN website_url wu ON ws.website_url_id = wu.id
+            WHERE wu.website_id = %s AND ws.server_id = %s AND ws.year = %s AND ws.month = %s
+        """, (website_id, server_id, year, month))
+        # Delete unused URLs for the website if they have no stats
+        cursor.execute("""
+            DELETE wu FROM website_url wu
+            LEFT JOIN website_url_stats ws ON wu.id = ws.website_url_id
+            WHERE wu.website_id = %s AND ws.website_url_id IS NULL
+        """, (website_id,))
+
     # Insert or update stats for each URL in POS_SIDER
     for data in sider_data:
-        website_url_id = get_or_create_website_url_id(cursor, website_id, data['url'])
+        url = data['url']
+        if url not in valid_pages:
+            continue  # Skip URLs not in the list of valid pages
+
+        website_url_id = get_or_create_website_url_id(cursor, website_id, url)
         update_server_stats(cursor, website_url_id, server_id, year, month, data)
 
     # Update the file tracking to mark it as processed
@@ -216,6 +261,7 @@ def main():
     parser.add_argument('--website', type=str, help='Specify the website name')
     args = parser.parse_args()
 
+    global connection
     connection = get_database_connection()
     cursor = connection.cursor()
 
@@ -232,28 +278,11 @@ def main():
             print(f"No directory found for server '{args.server}'.")
             return
 
-    # Determine website_id if --website is specified
-    website_id = None
-    if args.website:
-        cursor.execute("SELECT id FROM websites WHERE name = %s", (args.website,))
-        result = cursor.fetchone()
-        if result:
-            website_id = result[0]
-        else:
-            print(f"Website '{args.website}' not found in the database.")
-            return
-
     # If force is True, delete existing data related to the website/server/file
     if args.force:
         if args.website:
-            # Get the website_id if not already obtained
-            cursor.execute("SELECT id FROM websites WHERE name = %s", (args.website,))
-            result = cursor.fetchone()
-            if result:
-                website_id = result[0]
-            else:
-                print(f"Website '{args.website}' not found in the database.")
-                return
+            # Get the website_id
+            website_id = get_website_id(cursor, args.website)
             # Delete stats for the specified website
             cursor.execute("""
                 DELETE ws FROM website_url_stats ws
@@ -268,7 +297,7 @@ def main():
             """, (website_id,))
         if args.server:
             # Retrieve 'server_id' based on 'args.server'
-            server_id = get_server_id_from_name(args.server)
+            server_id = get_server_id(f'/home/private/server_stats/{args.server}')
             if server_id is None:
                 print(f"Invalid server name '{args.server}'")
                 return
@@ -304,13 +333,7 @@ def main():
                 print(f"Invalid file name format '{args.file}'. Cannot extract year and month.")
                 return
             # Get website_id
-            cursor.execute("SELECT id FROM websites WHERE name = %s", (website_name,))
-            result = cursor.fetchone()
-            if result:
-                website_id = result[0]
-            else:
-                print(f"Website '{website_name}' not found in the database.")
-                return
+            website_id = get_website_id(cursor, website_name)
             # Delete stats for the specified website, year, and month
             cursor.execute("""
                 DELETE ws FROM website_url_stats ws
@@ -326,7 +349,7 @@ def main():
         if not args.website and not args.server and not args.file:
             # Delete all stats and URLs
             cursor.execute("DELETE FROM website_url_stats")
-            cursor.execute("DELETE FROM website_url")       
+            cursor.execute("DELETE FROM website_url")
 
     for directory in directories:
         server_id = get_server_id(directory)
@@ -345,7 +368,7 @@ def main():
                 if filename.endswith('.txt') and 'awstats' in filename:
                     if args.website:
                         filename_without_extension = filename[:-4]
-                        website_part = filename_without_extension[13+1:]
+                        website_part = '.'.join(filename.split('.')[1:-1])
                         if website_part != args.website:
                             continue
                     file_path = os.path.join(directory, filename)
