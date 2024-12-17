@@ -81,6 +81,8 @@ def should_ignore_url(url):
         return True
     if '://' in url:
         return True
+    if '&' in url:
+        return True
     # Check against ignore patterns
     for pattern in ignore_patterns:
         if url.startswith(pattern):
