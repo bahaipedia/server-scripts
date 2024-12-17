@@ -8,15 +8,12 @@ Benutzer:
 Benutzer_Diskussion:
 Spezial:
 Diskussion:
-Hauptseite
 Usuario:
 Usuario_discusión:
 Especial:
 Discusión:
-Portada
 load.php
 rest.php
-/load.php
 api.php
 skins/
 opensearch_desc.php
@@ -27,14 +24,11 @@ Utilisateur:
 Discussion_utilisateur:
 Spécial:
 Discussion:
-Page_d'accueil
 Usuário:
 Usuário_discussão:
 Discussão:
-Página_principal
 Utilizador:
 Utilizador_Discussão:
-Página_principal
 Участник:
 Обсуждение_участника:
 Служебная:
@@ -59,4 +53,3 @@ cgi-bin/awstats.pl
 بحث_کاربر
 ویژه
 بحث
-صفحه_اصلی
