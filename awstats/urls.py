@@ -50,7 +50,7 @@ def get_website_id(cursor, website_name):
     if result:
         return result[0]
     else:
-        raise ValueError(f"Website '{website_name}' not found in the database.")
+        raise ValueError(f"Website '{website_name}' not found in database.")
 
 # Check if the file has been processed
 def has_file_been_processed(cursor, filename, server_id, last_modified, force):
