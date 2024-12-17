@@ -114,15 +114,9 @@ def parse_pos_sider(file, pos_sider_offset):
             parts = line.split()
             if len(parts) == 5:  # URL, Pages, Bandwidth, Entry, Exit
                 raw_url = parts[0]
-
-                # Apply the ignore patterns to the raw URL
-                if should_ignore_url(raw_url):
-                    continue
-
-                # Now proceed with URL processing
                 url = raw_url
 
-                # Remove leading slash if present
+                # Remove the leading slash (if present)
                 if url.startswith('/'):
                     url = url[1:]
 
@@ -132,6 +126,10 @@ def parse_pos_sider(file, pos_sider_offset):
 
                 # Decode URL-encoded characters
                 url = unquote(url)
+
+                # Now, check if the URL should be ignored
+                if should_ignore_url(url):
+                    continue
 
                 # Replace underscores with spaces
                 url = url.replace('_', ' ')
