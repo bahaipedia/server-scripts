@@ -85,7 +85,8 @@ def get_valid_content_pages(api_url):
             raise Exception(f"MediaWiki API error: {data['error']['info']}")
 
         for page in data['query']['allpages']:
-            title = page['title']
+            title = title.replace('_', ' ')
+            title = unquote(title)
             valid_pages.add(title)
 
         if 'continue' in data:
