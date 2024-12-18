@@ -175,6 +175,9 @@ def update_server_stats(cursor, website_url_id, server_id, year, month, data):
 valid_pages_cache = {}
 valid_urls_inserted = set()
 
+# Global variables
+excluded_websites = ['fr.bahai.works', 'bahaiconcordance.org']
+
 # Process a single AWStats file
 def process_file(cursor, file_path, server_id, force):
     global valid_pages_cache
@@ -202,6 +205,12 @@ def process_file(cursor, file_path, server_id, force):
 
     # Extract website name from filename
     website_name = '.'.join(filename.split('.')[1:-1])
+
+    # Check if the website is in the exclusion list
+    if website_name in excluded_websites:
+        print(f"Skipping excluded website '{website_name}'.")
+        return
+        
     website_id = get_website_id(cursor, website_name)
 
     # Use cached valid pages if available
