@@ -171,8 +171,15 @@ def update_server_stats(cursor, website_url_id, server_id, year, month, data):
         exit_count = exit_count + VALUES(exit_count)
     """, (website_url_id, server_id, year, month, data['pages'], data['entry'], data['exit']))
 
+# Global caches to prevent multiple fetches and insertions per domain
+valid_pages_cache = {}
+valid_urls_inserted = set()
+
 # Process a single AWStats file
 def process_file(cursor, file_path, server_id, force):
+    global valid_pages_cache
+    global valid_urls_inserted
+
     filename = os.path.basename(file_path)
     last_modified = datetime.fromtimestamp(os.path.getmtime(file_path)).replace(microsecond=0)
 
@@ -197,29 +204,39 @@ def process_file(cursor, file_path, server_id, force):
     website_name = '.'.join(filename.split('.')[1:-1])
     website_id = get_website_id(cursor, website_name)
 
-    # Construct the API URL
-    api_url = f'https://{website_name}/api.php'
+    # Use cached valid pages if available
+    if website_name in valid_pages_cache:
+        valid_pages = valid_pages_cache[website_name]
+        print(f"Using cached valid pages for {website_name}.")
+    else:
+        # Construct the API URL
+        api_url = f'https://{website_name}/api.php'
 
-    # Fetch valid content pages from MediaWiki API
-    print(f"Fetching valid content pages from MediaWiki API at {api_url}...")
-    try:
-        valid_pages = get_valid_content_pages(api_url)
-    except Exception as e:
-        print(f"Error fetching valid pages for {website_name}: {e}")
-        return
-    print(f"Retrieved {len(valid_pages)} valid pages for {website_name}.")
+        # Fetch valid content pages from MediaWiki API
+        print(f"Fetching valid content pages from MediaWiki API at {api_url}...")
+        try:
+            valid_pages = get_valid_content_pages(api_url)
+            # Cache the valid pages
+            valid_pages_cache[website_name] = valid_pages
+        except Exception as e:
+            print(f"Error fetching valid pages for {website_name}: {e}")
+            return
+        print(f"Retrieved {len(valid_pages)} valid pages for {website_name}.")
 
-    # Insert valid URLs into website_url table
-    print(f"Inserting valid URLs into database for {website_name}...")
-    for url in valid_pages:
-        # Check if the URL already exists
-        cursor.execute("SELECT id FROM website_url WHERE website_id = %s AND url = %s", (website_id, url))
-        result = cursor.fetchone()
-        if not result:
-            cursor.execute("INSERT INTO website_url (website_id, url) VALUES (%s, %s)", (website_id, url))
-
-    # Commit the insertion of valid URLs
-    connection.commit()
+    # Insert valid URLs into website_url table only once per website
+    if website_name not in valid_urls_inserted:
+        print(f"Inserting valid URLs into database for {website_name}...")
+        for url in valid_pages:
+            # Check if the URL already exists
+            cursor.execute("SELECT id FROM website_url WHERE website_id = %s AND url = %s", (website_id, url))
+            result = cursor.fetchone()
+            if not result:
+                cursor.execute("INSERT INTO website_url (website_id, url) VALUES (%s, %s)", (website_id, url))
+        # Commit the insertion of valid URLs
+        connection.commit()
+        valid_urls_inserted.add(website_name)
+    else:
+        print(f"Valid URLs for {website_name} already inserted during this execution.")
 
     # Determine year and month from filename
     year = int(filename[9:13])
