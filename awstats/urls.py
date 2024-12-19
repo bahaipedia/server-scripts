@@ -46,6 +46,25 @@ def get_website_id(cursor, website_name):
     else:
         raise ValueError(f"Website '{website_name}' not found in database.")
 
+# Check if the file has been processed
+def has_file_been_processed(cursor, filename, server_id, last_modified, force):
+    if force:
+        return False
+    cursor.execute("""
+        SELECT last_modified FROM file_tracking
+        WHERE filename = %s AND server_id = %s
+    """, (filename, server_id))
+    result = cursor.fetchone()
+    return result and result[0] == last_modified
+
+# Update file tracking table
+def update_file_tracking(cursor, filename, server_id, last_modified):
+    cursor.execute("""
+        INSERT INTO file_tracking (filename, server_id, last_modified, processed_date)
+        VALUES (%s, %s, %s, %s)
+        ON DUPLICATE KEY UPDATE last_modified = VALUES(last_modified), processed_date = VALUES(processed_date)
+    """, (filename, server_id, last_modified, datetime.now().replace(microsecond=0)))
+
 # Fetch valid content pages from MediaWiki API
 def get_valid_content_pages(api_url):
     valid_pages = set()
@@ -165,6 +184,12 @@ def process_file(cursor, file_path, server_id, force):
     global valid_urls_inserted
 
     filename = os.path.basename(file_path)
+    last_modified = datetime.fromtimestamp(os.path.getmtime(file_path)).replace(microsecond=0)
+
+    # Check if the file has already been processed
+    if has_file_been_processed(cursor, filename, server_id, last_modified, force):
+        print(f"File {filename} has already been processed.")
+        return
 
     with open(file_path, 'rb') as file:
         # Parse BEGIN_MAP to get section positions
@@ -251,7 +276,8 @@ def process_file(cursor, file_path, server_id, force):
         website_url_id = get_or_create_website_url_id(cursor, website_id, url)
         update_server_stats(cursor, website_url_id, server_id, year, month, data)
 
-    # Done
+    # Update the file tracking to mark it as processed
+    update_file_tracking(cursor, filename, server_id, last_modified)
     print(f"Processed file {filename}.")
 
 # Main function
@@ -316,9 +342,9 @@ def main():
             """)
         if args.file:
             # Extract website_name, year, and month from args.file
-             = args.file
-            _without_extension = [:-4]  # Remove '.txt'
-            parts = _without_extension.split('.')
+            filename = args.file
+            filename_without_extension = filename[:-4]  # Remove '.txt'
+            parts = filename_without_extension.split('.')
             if len(parts) < 2:
                 print(f"Invalid file name format '{args.file}'. Cannot extract website name.")
                 return
@@ -326,7 +352,7 @@ def main():
             website_name = '.'.join(parts[1:])
             # Extract year and month from file name (assuming format 'awstatsMMYYYY')
             import re
-            match = re.match(r'awstats(\d{2})(\d{4})', _without_extension)
+            match = re.match(r'awstats(\d{2})(\d{4})', filename_without_extension)
             if match:
                 month_str, year_str = match.groups()
                 month = int(month_str)
