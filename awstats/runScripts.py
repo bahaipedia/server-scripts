@@ -61,6 +61,16 @@ def run_script(script_name, args):
         command.extend(['--website', args.website])
     subprocess.run(command)
 
+def get_server_id(directory):
+    # Map directories to server IDs
+    server_mapping = {
+        '/var/lib/awstats': 1,
+        '/home/private/server_stats/frankfurt': 2,
+        '/home/private/server_stats/saopaulo': 4,
+        '/home/private/server_stats/singapore': 3
+    }
+    return server_mapping.get(directory)
+
 def main():
     args = parse_arguments()
     connection = get_database_connection()
