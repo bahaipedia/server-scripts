@@ -1,3 +1,6 @@
+# Add this at the top of your script
+SCRIPT_NAME = 'urls'
+
 import os
 import argparse
 import mysql.connector
@@ -47,23 +50,25 @@ def get_website_id(cursor, website_name):
         raise ValueError(f"Website '{website_name}' not found in database.")
 
 # Check if the file has been processed
-def has_file_been_processed(cursor, filename, server_id, last_modified, force):
+def has_file_been_processed(cursor, filename, server_id, last_modified, force, script_name):
     if force:
-        return False
+        return False  # Bypass the processing check if force is True
+    # Check if file has been processed
     cursor.execute("""
         SELECT last_modified FROM file_tracking
-        WHERE filename = %s AND server_id = %s
-    """, (filename, server_id))
+        WHERE filename = %s AND server_id = %s AND script_name = %s
+    """, (filename, server_id, script_name))
     result = cursor.fetchone()
     return result and result[0] == last_modified
 
 # Update file tracking table
-def update_file_tracking(cursor, filename, server_id, last_modified):
+def update_file_tracking(cursor, filename, server_id, last_modified, script_name):
+    # Update the file_tracking table
     cursor.execute("""
-        INSERT INTO file_tracking (filename, server_id, last_modified, processed_date)
-        VALUES (%s, %s, %s, %s)
+        INSERT INTO file_tracking (filename, server_id, last_modified, processed_date, script_name)
+        VALUES (%s, %s, %s, %s, %s)
         ON DUPLICATE KEY UPDATE last_modified = VALUES(last_modified), processed_date = VALUES(processed_date)
-    """, (filename, server_id, last_modified, datetime.now().replace(microsecond=0)))
+    """, (filename, server_id, last_modified, datetime.now().replace(microsecond=0), script_name))
 
 # Fetch valid content pages from MediaWiki API
 def get_valid_content_pages(api_url):
@@ -187,8 +192,8 @@ def process_file(cursor, file_path, server_id, force):
     last_modified = datetime.fromtimestamp(os.path.getmtime(file_path)).replace(microsecond=0)
 
     # Check if the file has already been processed
-    if has_file_been_processed(cursor, filename, server_id, last_modified, force):
-        print(f"File {filename} has already been processed.")
+    if has_file_been_processed(cursor, filename, server_id, last_modified, force, SCRIPT_NAME):
+        print(f"File {filename} has already been processed by {SCRIPT_NAME}.")
         return
 
     with open(file_path, 'rb') as file:
@@ -277,7 +282,7 @@ def process_file(cursor, file_path, server_id, force):
         update_server_stats(cursor, website_url_id, server_id, year, month, data)
 
     # Update the file tracking to mark it as processed
-    update_file_tracking(cursor, filename, server_id, last_modified)
+    update_file_tracking(cursor, filename, server_id, last_modified, SCRIPT_NAME)
     print(f"Processed file {filename}.")
 
 # Main function
