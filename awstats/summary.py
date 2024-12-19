@@ -42,27 +42,6 @@ def get_website_id(cursor, website_name):
         cursor.execute("INSERT INTO websites (name) VALUES (%s)", (website_name,))
         return cursor.lastrowid
 		
-def has_file_been_processed(cursor, filename, server_id, last_modified, force):
-    if force:
-        return False  # Bypass the processing check if force is True
-    # Check if file has been processed
-    cursor.execute("""
-        SELECT last_modified FROM file_tracking
-        WHERE filename = %s AND server_id = %s
-    """, (filename, server_id))
-    result = cursor.fetchone()
-    if result and result[0] == last_modified:
-        return True
-    return False
-
-def update_file_tracking(cursor, filename, server_id, last_modified):
-    # Update the file_tracking table
-    cursor.execute("""
-        INSERT INTO file_tracking (filename, server_id, last_modified, processed_date)
-        VALUES (%s, %s, %s, %s)
-        ON DUPLICATE KEY UPDATE last_modified = VALUES(last_modified), processed_date = VALUES(processed_date)
-    """, (filename, server_id, last_modified, datetime.now().replace(microsecond=0)))
-
 def parse_begin_map(file):
     # Parse the BEGIN_MAP section to get positions
     positions = {}
@@ -118,11 +97,6 @@ def parse_pos_day(file, pos_day_offset):
 
 def process_file(cursor, file_path, server_id, force):
     filename = os.path.basename(file_path)
-    last_modified = datetime.fromtimestamp(os.path.getmtime(file_path)).replace(microsecond=0)
-
-    if has_file_been_processed(cursor, filename, server_id, last_modified, force):
-        print(f"File {filename} has already been processed.")
-        return
 
     with open(file_path, 'rb') as file:
         # Parse BEGIN_MAP to get positions
@@ -164,8 +138,7 @@ def process_file(cursor, file_path, server_id, force):
         """, (website_id, server_id, data['year'], data['month'], data['day'],
               data['number_of_visits'], data['pages'], data['hits'], data['bandwidth']))
 
-    # Update file_tracking
-    update_file_tracking(cursor, filename, server_id, last_modified)
+    # Done
     print(f"Processed file {filename}.")
 
 def main():
