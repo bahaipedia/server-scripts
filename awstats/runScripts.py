@@ -1,5 +1,7 @@
 import argparse
 import subprocess
+import os
+import sys
 
 def parse_arguments():
     parser = argparse.ArgumentParser(description='Run AWStats processing scripts.')
@@ -11,7 +13,9 @@ def parse_arguments():
     return parser.parse_args()
 
 def run_script(script_name, args):
-    command = ['python3', f'{script_name}.py']
+    # Build the command with the full path to the script
+    script_path = os.path.join(SCRIPT_DIR, f'{script_name}.py')
+    command = ['python3', script_path]
     if args.server:
         command.extend(['--server', args.server])
     if args.file:
@@ -23,10 +27,16 @@ def run_script(script_name, args):
     subprocess.run(command)
 
 def main():
+    global SCRIPT_DIR  # Set this as a global variable for use in other functions
+    SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+
+    # Change the current working directory to the script's location
+    os.chdir(SCRIPT_DIR)
+
     args = parse_arguments()
 
     # List of available scripts
-    available_scripts = ['summary', 'urls'] # Add others as necessary
+    available_scripts = ['summary', 'urls']  # Add others as necessary
 
     if args.script:
         # Run only the specified scripts
